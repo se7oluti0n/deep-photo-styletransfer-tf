@@ -87,7 +87,7 @@ def load_seg(content_seg_path, style_seg_path, content_shape, style_shape):
 
     return color_content_masks, color_style_masks
 
-def load_seg_voc(content_seg_path, style_seg_path, content_shape, style_shape, num_classess=21):
+def load_seg_voc(content_seg_path, style_seg_path, content_shape, style_shape, num_classes=21):
     # PIL resize has different order of np.shape
     content_seg = np.array(Image.open(content_seg_path).resize(content_shape, resample=Image.BILINEAR))
     style_seg = np.array(Image.open(style_seg_path).resize(style_shape, resample=Image.BILINEAR))
@@ -98,15 +98,15 @@ def load_seg_voc(content_seg_path, style_seg_path, content_shape, style_shape, n
     # content_masks = tf.unstack(tf.expand_dims(tf.expand_dims(content_onehot, 2), 0))[:-1]
     # style_masks = tf.unstack(tf.expand_dims(tf.expand_dims(style_onehot, 2), 0))[:-1]
 
-    content_onehot = (np.arange(num_classess) == content_seg.ravel()).astype(np.float32).reshape(content_shape + [-1])
-    style_onehot = (np.arange(num_classess) == style_seg.ravel()).astype(np.float32).reshape(style_shape + [-1])
+    content_onehot = (np.arange(num_classes) == content_seg.ravel()[:,None]).astype(np.float32).reshape(content_shape[::-1] + [-1])
+    style_onehot = (np.arange(num_classes) == style_seg.ravel()[:,None]).astype(np.float32).reshape(style_shape[::-1] + [-1])
 
-    content_masks = np.split(content_onehot, num_classess, axis=-1)
-    style_masks = np.split(style_onehot, num_classess, axis=-1)
+    content_masks = np.split(content_onehot, num_classes, axis=-1)
+    style_masks = np.split(style_onehot, num_classes, axis=-1)
 
     content_tensors = []
     style_tensors = []
-    for i in range(num_classess):
+    for i in range(num_classes):
         content_tensors.append(tf.expand_dims(tf.constant(content_masks[i]), 0))
         style_tensors.append(tf.expand_dims(tf.constant(style_masks[i]), 0))
 
@@ -240,7 +240,7 @@ def stylize(args, Matting):
     style_width, style_height = style_image.shape[1], style_image.shape[0]
     style_image = style_image.reshape((1, style_height, style_width, 3)).astype(np.float32)
 
-    content_masks, style_masks = load_seg(args.content_seg_path, args.style_seg_path, [content_width, content_height], [style_width, style_height], num_classes=19)
+    content_masks, style_masks = load_seg_voc(args.content_seg_path, args.style_seg_path, [content_width, content_height], [style_width, style_height], num_classes=19)
 
     if not args.init_image_path:
         if Matting:
