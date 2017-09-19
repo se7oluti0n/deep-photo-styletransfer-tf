@@ -87,6 +87,19 @@ def load_seg(content_seg_path, style_seg_path, content_shape, style_shape):
 
     return color_content_masks, color_style_masks
 
+def load_seg_voc(content_seg_path, style_seg_path, content_shape, style_shape, num_classess=21):
+    # PIL resize has different order of np.shape
+    content_seg = np.array(Image.open(content_seg_path).resize(content_shape, resample=Image.BILINEAR), dtype=np.float32)
+    style_seg = np.array(Image.open(style_seg_path).resize(style_shape, resample=Image.BILINEAR), dtype=np.float32)
+
+    content_onehot = tf.one_hot(tf.constant(content_seg), num_classess+1)
+    style_onehot = tf.one_hot(tf.constant(style_seg), num_classess+1)
+
+    content_masks = tf.unstack(tf.expand_dims(tf.expand_dims(content_onehot, 2), 0))[:-1]
+    style_masks = tf.unstack(tf.expand_dims(tf.expand_dims(style_onehot, 2), 0))[:-1]
+
+    return content_masks, style_masks
+
 def gram_matrix(activations):
     height = tf.shape(activations)[1]
     width = tf.shape(activations)[2]
@@ -215,7 +228,7 @@ def stylize(args, Matting):
     style_width, style_height = style_image.shape[1], style_image.shape[0]
     style_image = style_image.reshape((1, style_height, style_width, 3)).astype(np.float32)
 
-    content_masks, style_masks = load_seg(args.content_seg_path, args.style_seg_path, [content_width, content_height], [style_width, style_height])
+    content_masks, style_masks = load_seg(args.content_seg_path, args.style_seg_path, [content_width, content_height], [style_width, style_height], num_classes=19)
 
     if not args.init_image_path:
         if Matting:
