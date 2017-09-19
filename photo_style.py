@@ -89,16 +89,28 @@ def load_seg(content_seg_path, style_seg_path, content_shape, style_shape):
 
 def load_seg_voc(content_seg_path, style_seg_path, content_shape, style_shape, num_classess=21):
     # PIL resize has different order of np.shape
-    content_seg = np.array(Image.open(content_seg_path).resize(content_shape, resample=Image.BILINEAR), dtype=np.float32)
-    style_seg = np.array(Image.open(style_seg_path).resize(style_shape, resample=Image.BILINEAR), dtype=np.float32)
+    content_seg = np.array(Image.open(content_seg_path).resize(content_shape, resample=Image.BILINEAR))
+    style_seg = np.array(Image.open(style_seg_path).resize(style_shape, resample=Image.BILINEAR))
 
-    content_onehot = tf.one_hot(tf.constant(content_seg), num_classess+1)
-    style_onehot = tf.one_hot(tf.constant(style_seg), num_classess+1)
+    # content_onehot = tf.one_hot(tf.constant(content_seg), num_classess+1)
+    # style_onehot = tf.one_hot(tf.constant(style_seg), num_classess+1)
 
-    content_masks = tf.unstack(tf.expand_dims(tf.expand_dims(content_onehot, 2), 0))[:-1]
-    style_masks = tf.unstack(tf.expand_dims(tf.expand_dims(style_onehot, 2), 0))[:-1]
+    # content_masks = tf.unstack(tf.expand_dims(tf.expand_dims(content_onehot, 2), 0))[:-1]
+    # style_masks = tf.unstack(tf.expand_dims(tf.expand_dims(style_onehot, 2), 0))[:-1]
 
-    return content_masks, style_masks
+    content_onehot = (np.arange(num_classess) == content_seg.ravel()).astype(np.float32).reshape(content_shape + [-1])
+    style_onehot = (np.arange(num_classess) == style_seg.ravel()).astype(np.float32).reshape(style_shape + [-1])
+
+    content_masks = np.split(content_onehot, num_classess, axis=-1)
+    style_masks = np.split(style_onehot, num_classess, axis=-1)
+
+    content_tensors = []
+    style_tensors = []
+    for i in range(num_classess):
+        content_tensors.append(tf.expand_dims(tf.constant(content_masks[i]), 0))
+        style_tensors.append(tf.expand_dims(tf.constant(style_masks[i]), 0))
+
+    return content_tensors, style_tensors
 
 def gram_matrix(activations):
     height = tf.shape(activations)[1]
